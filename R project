@@ -1,0 +1,1536 @@
+# Load necessary libraries
+library(readr)
+library(dplyr)
+
+# Read the data
+Master <- read_csv("/Users/cheryn/Downloads/Master Data Copy.csv")
+Master1 <- read_csv("/Users/cheryn/Downloads/Partnership Info.csv")
+Master2 <- read_csv("/Users/cheryn/Downloads/Education and occupation.csv")
+Master3 <- read_csv("/Users/cheryn/Downloads/Person.csv")
+
+# Merge the data
+Merge1 <- merge(x = Master, y = Master1, by = "pid", all.x = TRUE)
+Merge2 <- merge(x = Merge1, y = Master2, by = 'pid', all.x = TRUE)
+Merge3 <- merge(x = Merge2, y = Master3, by = 'pid', all.x = TRUE)
+
+# Load necessary libraries
+library(dplyr)
+
+Data <- Merge3
+
+#How many missing?
+missing_proportions <- colSums(is.na(Data)) / nrow(Merge3)
+print(missing_proportions)
+missing_values <- colSums(is.na(Merge3))
+print(missing_values)
+
+missing_percentage <- colSums(is.na(Merge3)) / nrow(Merge3) * 100
+missing_table <- data.frame(Variable = names(Merge3), Missing_Percentage = missing_percentage)
+print(missing_table)
+
+Data <- Merge3
+# Drop NA values
+Data <- na.omit(Data)
+
+# Create a copy of the original DataFrame
+cleaned_data <- Data
+
+# Remove rows where any column has the values -8, -5, -3,-2 or -1
+cleaned_data <- cleaned_data %>% 
+  filter(across(everything(), ~ . != -8)) %>%
+  filter(across(everything(), ~ . != -5)) %>%
+  filter(across(everything(), ~ . != -3)) %>%
+  filter(across(everything(), ~ . != -2)) %>%
+  filter(across(everything(), ~ . != -1))
+
+Data <- cleaned_data
+
+# Load the mice package
+library(mice)
+
+## Load the mice library
+library(mice)
+
+# Perform multiple imputation on df
+mice_output <- mice(Data, m=5) # m is the number of multiple imputations
+
+# Create a complete dataset by taking the average over the imputed datasets
+complete_data <- complete(mice_output)
+
+# Imputing missing values with mean for all relevant variables
+for (col in names(Data)[3:34]) {
+  Data[[col]][is.na(Data[[col]])] <- mean(Data[[col]], na.rm = TRUE)
+}
+
+# Creating density plots for each variable
+for (col in names(Data)[3:34]) {
+  print(
+    ggplot(Data, aes_string(x = col)) +
+      geom_density(fill = "blue", alpha = 0.5) +
+      labs(title = paste("Density Plot of", col, "Following Mean Imputation"),
+           x = "Value",
+           y = "Density")
+  )
+}
+library(ggplot2)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+# Imputing missing values with mean for all relevant variables
+for (col in names(Data)[3:34]) {
+  Data[[col]][is.na(Data[[col]])] <- mean(Data[[col]], na.rm = TRUE)
+}
+
+# Reshape the data into a long format
+Data_long <- Data %>%
+  select(3:34) %>%
+  pivot_longer(everything(), names_to = "Variable", values_to = "Value")
+
+# Create a single density plot for all variables
+ggplot(Data_long, aes(x = Value, fill = Variable)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~ Variable, scales = "free") +
+  labs(title = "Density Plots of Variables Following Mean Imputation",
+       x = "Value",
+       y = "Density") +
+  theme_minimal()
+library(ggplot2)
+
+# Looping through the variables
+for (col in names(Data)[3:34]) {
+  
+  # Creating a new data frame with original and imputed data for the specific variable
+  combined_data <- data.frame(
+    Value = c(Data[[col]], complete_data[[col]]),
+    Type = rep(c("Original", "Imputed"), each = nrow(Data))
+  )
+  
+  # Plotting the density plot
+  p <- ggplot(combined_data, aes(x = Value, fill = Type)) +
+    geom_density(alpha = 0.5) +
+    geom_vline(aes(xintercept = mean(Value[Type == "Original"]), linetype = "Original Mean"), show.legend = TRUE) +
+    geom_vline(aes(xintercept = mean(Value[Type == "Imputed"]), linetype = "Imputed Mean"), show.legend = TRUE) +
+    labs(title = paste("Density Plot of", col),
+         x = "Value",
+         y = "Density") +
+    scale_linetype_manual(values = c("Original Mean" = "dashed", "Imputed Mean" = "dotted")) +
+    theme_minimal()
+  
+  print(p)
+}
+library(ggplot2)
+library(gridExtra)
+
+# List to store individual plots
+plot_list <- list()
+
+# Specifying the variables to plot
+variables_to_plot <- c("No_of_previous_relationships",
+                       "Partnership_status",
+                       "Age_began",
+                       "Occupational_Position",
+                       "Education_Classification")
+
+
+# Looping through the specified variables
+for (col in variables_to_plot) {
+  
+  # Creating a new data frame with original and imputed data for the specific variable
+  combined_data <- data.frame(
+    Value = c(Data[[col]], complete_data[[col]]),
+    Type = rep(c("Original", "Imputed"), each = nrow(Data))
+  )
+  
+  # Plotting the density plot
+  p <- ggplot(combined_data, aes(x = Value, fill = Type)) +
+    geom_density(alpha = 0.5) +
+    geom_vline(aes(xintercept = mean(Value[Type == "Original"]), linetype = "Original Mean"), show.legend = TRUE) +
+    geom_vline(aes(xintercept = mean(Value[Type == "Imputed"]), linetype = "Imputed Mean"), show.legend = TRUE) +
+    labs(title = paste("Density Plot of", col),
+         x = "Value",
+         y = "Density") +
+    scale_linetype_manual(values = c("Original Mean" = "dashed", "Imputed Mean" = "dotted")) +
+    theme_minimal()
+  
+  # Adding the plot to the list
+  plot_list[[col]] <- p
+}
+
+# Arranging the plots in a grid and exporting to a file
+grid.arrange(grobs = plot_list, ncol = 2)
+ggsave("density_plots.png")
+
+for (col in variables_to_plot) {
+  print(paste(col, "in Data:", sum(!is.na(Data[[col]])), "in complete_data:", sum(!is.na(complete_data[[col]]))))
+}
+
+for (col in variables_to_plot) {
+  print(paste(col, "in Data:", sum(!is.na(Data[[col]])), "in complete_data:", sum(!is.na(complete_data[[col]]))))
+}
+library(ggplot2)
+
+# Assuming complete_data is the imputed data
+complete_data <- Data # Replace with actual imputed data if needed
+
+variables_to_plot <- c("No_of_previous_relationships",
+                       "Partnership_status",
+                       "Age_began",
+                       "Occupational_Position",
+                       "Education_Classification")
+
+plot_list <- list()
+
+for (col in variables_to_plot) {
+  # Creating a new data frame with original and imputed data for the specific variable
+  combined_data <- data.frame(
+    Value = c(Data[[col]], complete_data[[col]]),
+    Type = rep(c("Original", "Imputed"), each = nrow(Data))
+  )
+  
+  # Plotting the density plot
+  p <- ggplot(combined_data, aes(x = Value, fill = Type)) +
+    geom_density(alpha = 0.5) +
+    geom_vline(aes(xintercept = mean(Value[Type == "Original"]), linetype = "Original Mean"), show.legend = TRUE) +
+    geom_vline(aes(xintercept = mean(Value[Type == "Imputed"]), linetype = "Imputed Mean"), show.legend = TRUE) +
+    labs(title = paste("Density Plot of", col),
+         x = "Value",
+         y = "Density") +
+    scale_linetype_manual(values = c("Original Mean" = "dashed", "Imputed Mean" = "dotted")) +
+    theme_minimal() +
+    theme(legend.position = "bottom") # Change legend position if needed
+  
+  # Adding the plot to the list
+  plot_list[[col]] <- p
+}
+
+# You can view the individual plots with:
+print(plot_list[["No_of_previous_relationships"]])
+
+# Assuming `imputed_data` contains the imputed values
+complete_data <- Data
+complete_data[is.na(Data)] <- complete_data
+
+# Combine the original and imputed data for the specific variables
+variables_to_plot <- c("No_of_previous_relationships",
+                       "Partnership_status",
+                       "Age_began",
+                       "Occupational_Position",
+                       "Education_Classification")
+
+combined_data <- data.frame()
+for (col in variables_to_plot) {
+  combined_data <- rbind(combined_data, data.frame(
+    Value = c(Data[[col]], complete_data[[col]]),
+    Type = rep(c("Original", "Imputed"), each = nrow(Data)),
+    Variable = rep(col, times = 2 * nrow(Data))
+  ))
+}
+library(ggplot2)
+
+# Plotting the density plot
+p <- ggplot(combined_data, aes(x = Value, fill = Type)) +
+  geom_density(alpha = 0.5) +
+  geom_vline(data = combined_data[combined_data$Type == "Original",], aes(xintercept = mean(Value), linetype = "Original Mean")) +
+  geom_vline(data = combined_data[combined_data$Type == "Imputed",], aes(xintercept = mean(Value), linetype = "Imputed Mean")) +
+  labs(x = "Value", y = "Density") +
+  scale_linetype_manual(values = c("Original Mean" = "dashed", "Imputed Mean" = "dotted")) +
+  theme_minimal() +
+  facet_wrap(~ Variable, scales = "free") # Facet by variable
+
+# Print the plot
+print(p)
+library(ggplot2)
+
+# Plotting the density plot
+p <- ggplot(combined_data, aes(x = Value, fill = Type)) +
+  geom_density(alpha = 0.5) +
+  labs(x = "Value", y = "Density") +
+  theme_minimal() +
+  facet_wrap(~ Variable, scales = "free") # Facet by variable
+
+# Print the plot
+print(p)
+
+# Calculate mean for the original data (ignoring NA values)
+original_mean <- mean(Data$No_of_previous_relationships, na.rm = TRUE)
+
+# Assuming complete_data contains the imputed data
+imputed_mean <- mean(complete_data$No_of_previous_relationships)
+
+# Print the means
+print(paste("Original mean:", original_mean))
+print(paste("Imputed mean:", imputed_mean))
+
+# Check if the means are approximately equal
+if (abs(original_mean - imputed_mean) < 1e-6) {
+  print("The imputation appears to be done correctly for 'No_of_previous_relationships'")
+} else {
+  print("The imputation does not match for 'No_of_previous_relationships'")
+}
+# Select only the numeric variables
+numeric_data <- Data[, sapply(Data, is.numeric)]
+
+# Compute the correlation matrix
+correlation_matrix <- cor(numeric_data, use = "complete.obs") # 'complete.obs' ignores missing values
+
+# Print the correlation matrix
+print(correlation_matrix)
+
+# Install the package if not already installed
+if (!requireNamespace("corrplot", quietly = TRUE)) {
+  install.packages("corrplot")
+}
+
+# Load the package
+library(corrplot)
+
+# Create the correlation plot
+corrplot(correlation_matrix)
+# Set up the corrplot parameters to control text size and rotation
+corrplot(correlation_matrix,
+         method = "color", # You can change this to "circle" or other options
+         tl.cex = 0.5, # Text label size
+         tl.col = "black", # Text label color
+         tl.srt = 45) # Text label rotation in degrees
+
+correlation_matrix <- cor(Data)
+install.packages("reshape2")
+library(reshape2)
+
+melted_correlation_matrix <- melt(correlation_matrix)
+ggplot(data = melted_correlation_matrix, aes(x=Var1, y=Var2)) +
+  geom_tile(aes(fill=value), color='white') +
+  scale_fill_gradient2(low="blue", high="red", mid="white", midpoint=0) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, size = 12, hjust = 1)) +
+  coord_fixed()
+# Calculate the correlation coefficients for the variables you want
+correlations <- cor(Data[,3:34], use="complete.obs")
+
+# Print the correlation coefficients
+print(correlations)
+
+# Print columns
+variables <- names(Data)
+print(variables)
+
+# Data
+data <- your_data_frame
+
+# Function to determine the scale of a variable
+detect_scale <- function(variable) {
+  if (is.factor(variable) || is.character(variable)) {
+    if (ordered(variable)) {
+      return("ordinal")
+    } else {
+      return("nominal")
+    }
+  } else if (is.numeric(variable)) {
+    # You can refine these rules based on knowledge about your specific variables
+    if (min(variable, na.rm = TRUE) == 0) {
+      return("ratio")
+    } else {
+      return("interval")
+    }
+  } else {
+    return("unknown")
+  }
+}
+
+# Applying the function to your data
+scales <- sapply(Data, detect_scale)
+
+# Printing the scales
+print(data.frame(Variable = names(Data), Scale = scales))
+
+summary_statistics <- function(variable) {
+  missing_percentage <- sum(is.na(variable)) / length(variable) * 100
+  if (is.numeric(variable)) {
+    mean_value <- mean(variable, na.rm = TRUE)
+    std_dev <- sd(variable, na.rm = TRUE)
+    range_value <- range(variable, na.rm = TRUE)
+    return(c(Mean = mean_value, StdDev = std_dev, Range = paste0(range_value[1], " - ", range_value[2]), MissingPercentage = missing_percentage))
+  }
+}
+
+summary_statistics(Data$Age_began)
+
+summary_statistics <- function(variable) {
+  missing_percentage <- sum(is.na(variable)) / length(variable) * 100
+  if (is.numeric(variable)) {
+    mean_value <- mean(variable, na.rm = TRUE)
+    std_dev <- sd(variable, na.rm = TRUE)
+    range_value <- range(variable, na.rm = TRUE)
+    return(c(Mean = mean_value, StdDev = std_dev, Range = paste0(range_value[1], " - ", range_value[2]), MissingPercentage = missing_percentage))
+  } elseif (is.factor(variable)) {
+    freq_table <- table(variable, useNA = "always")
+    return(c(Frequencies = paste(names(freq_table), freq_table, sep = ": "), MissingPercentage = missing_percentage))
+  }
+}
+
+summary_statistics <- function(variable) {
+  missing_percentage <- sum(is.na(variable)) / length(variable) * 100
+  
+  if (is.numeric(variable)) {
+    mean_value <- mean(variable, na.rm = TRUE)
+    std_dev <- sd(variable, na.rm = TRUE)
+    range_value <- range(variable, na.rm = TRUE)
+    return(c(Mean = mean_value, StdDev = std_dev, Range = paste0(range_value[1], " - ", range_value[2]), MissingPercentage = missing_percentage))
+  } else { # Compute frequencies for categorical variables
+    freq_table <- table(variable, useNA = "always")
+    return(c(Frequencies = paste(names(freq_table), freq_table, sep = ": "), MissingPercentage = missing_percentage))
+  }
+}
+summary_statistics(Data$Partnership_status)
+
+
+# Function to compute summary statistics for each variable
+summary_statistics <- function(variable) {
+  # Handling missing values
+  missing_percentage <- sum(is.na(variable)) / length(variable) * 100
+  
+  # Compute mean, standard deviation, and range for continuous variables
+  if (is.numeric(variable)) {
+    mean_value <- mean(variable, na.rm = TRUE)
+    std_dev <- sd(variable, na.rm = TRUE)
+    range_value <- range(variable, na.rm = TRUE)
+    return(c(Mean = mean_value, StdDev = std_dev, Range = paste(range_value, collapse = " - "), MissingPercentage = missing_percentage))
+  } elseif (is.factor(variable)) { # Compute frequencies for categorical variables
+    freq_table <- table(variable, useNA = "always")
+    return(c(Frequencies = paste(names(freq_table), freq_table, sep = ": "), MissingPercentage = missing_percentage))
+  } else { # Return only the missing percentage for other variable types
+    return(c(MissingPercentage = missing_percentage))
+  }
+}
+
+# Specify nominal variables (modify this list as needed)
+nominal_vars <- c("pid", "cid", "Partnership_status", "Death", "Divorce", "Occupational_Position", "Education_Classification", "sex", "Where_did_you_live_1989", "Sexual_orientation")
+
+# Convert nominal variables to factors
+Data[nominal_vars] <- lapply(Data[nominal_vars], as.factor)
+
+# Applying the function to your data
+summary_stats <- sapply(Data, summary_statistics)
+
+# Transposing the result to get a more readable format
+summary_stats <- t(summary_stats)
+
+# Printing the summary statistics
+print(summary_stats)
+
+# Load the mice library
+library(mice)
+install.packages("caret")
+library(caret)
+
+
+Data[Data < 0] <- NA
+
+nzv <- nearZeroVar(Data)
+Data <- Data[,-nzv]
+cor_matrix <- cor(Data, use="pairwise.complete.obs")
+highly_correlated <- findCorrelation(cor_matrix, cutoff=0.9)
+Data <- Data[,-highly_correlated]
+method <- rep("pmm", ncol(Data))
+imputed_data <- mice(Data, m=5, maxit=50, method=method, seed=500)
+complete_data <- complete(imputed_data)
+# Check for correlation and remove highly correlated variables
+cor_matrix <- cor(Data, use="pairwise.complete.obs") # or use `nearZeroVar` from `caret` package
+high_cor_vars <- findCorrelation(cor_matrix, cutoff = 0.9)
+Data <- Data[,-high_cor_vars]
+
+# Choose a different method
+method <- make.method(Data)
+method["Age_began"] <- "mean" # Example: using mean imputation for Age_began
+imputed_data <- mice(Data, m=5, maxit=50, method=method, seed=500)
+
+
+###########################The Trees ################################
+# Calculate the total number of observations
+total_obs <- sum(table(Data$Divorce))
+
+# Calculate the percentages
+divorce_freq_percent <- (table(Data$Divorce) / total_obs) * 100
+
+# Create a barplot with baby blue bars
+barplot(divorce_freq_percent, 
+        main = "Class Distribution in Data (%)", 
+        xlab = "Divorce Status",
+        ylab = "Frequency (%)",
+        col = "lightblue")
+
+print(divorce_freq_percent)
+
+# Write the data frame to a CSV file
+write.csv(Data, "Data.csv", row.names = FALSE)
+
+# Write the data frame to a CSV file in a specific location
+write.csv(Data, "/Users/cheryn/Downloads/Data.csv", row.names = FALSE)
+
+
+
+# Verify if data is loaded correctly
+if (!exists("Data") || is.null(Data) || nrow(Data) == 0) {
+  stop("Data is not loaded. Please load the dataset.")
+}
+
+# Verify if data is a data frame
+if (!is.data.frame(Data)) {
+  stop("Loaded data is not a data frame.")
+}
+
+# Drop the unnecessary column
+Data <- Data[, !(names(Data) %in% c("Year spell end (2020= not ended)"))]
+
+# Randomly split the data into training and test sets
+set.seed(123)
+sample_index <- sample(seq_len(nrow(Data)), size = floor(0.8 * nrow(Data)))
+train_data <- Data[sample_index, ]
+test_data <- Data[-sample_index, ]
+
+cleaned_data$`Year spell end (2020= not ended)` <- NULL
+Data$`Year spell end (2020= not ended)` <- NULL
+train_data$`Year_spell_end_2020_not_ended` <- NULL
+test_data$`Year_spell_end_2020_not_ended` <- NULL
+
+library(rpart)
+standard_tree <- rpart(Divorce ~ ., data = train_data, method = "class")
+pred_standard <- predict(standard_tree, test_data, type = "class")
+accuracy_standard <- sum(pred_standard == test_data$Divorce) / length(pred_standard)
+
+install.packages("caret")
+library(caret)
+cm_standard <- confusionMatrix(as.factor(pred_standard), as.factor(test_data$Divorce))
+
+recall_standard <- cm_standard$byClass['Sensitivity']
+precision_standard <- cm_standard$byClass['Positive Predictive Value']
+specificity_standard <- cm_standard$byClass['Specificity']
+
+# Print the metrics
+print(paste("Recall: ", round(as.numeric(recall_standard), 4)))
+print(paste("Precision: ", round(as.numeric(precision_standard), 4)))
+print(paste("Specificity: ", round(as.numeric(specificity_standard), 4)))
+print(cm_standard$table)
+
+
+
+print(accuracy_standard)
+install.packages("rpart.plot")
+library(rpart.plot)
+# Create a stylized plot for the unpruned tree
+rpart.plot(standard_tree,
+           main="Unpruned Classification Tree",
+           extra=106, # display the node probabilities below the node
+           box.palette="RdBu", # color palette
+           shadow.col="gray", # shadow color under the boxes
+           nn=TRUE) # display the node numbers
+
+
+library(rpart)
+# Get the complexity parameter table
+cp_table <- standard_tree$cptable
+print(cp_table)
+
+# Plot the deviance (error) against the index (which represents the size of the tree)
+plot(1:nrow(cp_table), cp_table[,"xerror"], type="b", xlab="Size of Tree", ylab="Deviance", main="Deviance of Classification Tree")
+
+# Find the index for the minimum xerror
+min_index <- which.min(cp_table[,"xerror"])
+
+# Draw a vertical line where xerror is minimized
+abline(v=min_index, col="red")
+
+# Find the CP value that corresponds to the minimum xerror
+min_cp <- cp_table[min_index, "CP"]
+
+# Prune the tree using the minimum CP value
+pruned_tree <- prune(standard_tree, cp = min_cp)
+
+# Print a summary of the pruned tree to see the structure and variables
+summary(pruned_tree)
+
+
+
+
+
+
+
+# Prune the tree using the CP value that corresponds to the minimum xerror
+pruned_tree <- prune(standard_tree, cp = cp_table[min_index, "CP"])
+# Prune the tree using the weakest link algorithm
+pruned_tree <- prune(standard_tree, cp = min_cp)
+
+pruned_tree <- prune(standard_tree, cp = standard_tree$cptable[which.min(standard_tree$cptable[,"xerror"]),"CP"])
+pred_pruned <- predict(pruned_tree, test_data, type = "class")
+accuracy_pruned <- sum(pred_pruned == test_data$Divorce) / length(pred_pruned)
+print(accuracy_pruned)
+
+# Get the number of terminal nodes
+num_terminal_nodes <- sum(standard_tree$frame$var == "<leaf>")
+
+# Print the number of terminal nodes
+print(paste("Number of terminal nodes in the unpruned tree:", num_terminal_nodes))
+
+
+# Install and load the rpart.plot package
+install.packages("rpart.plot")
+library(rpart.plot)
+
+# Visualize the pruned tree
+rpart.plot(pruned_tree, main="Pruned Classification Tree")
+
+rpart.plot(pruned_tree,
+           main="Pruned Classification Tree",
+           extra=106, # display the node probabilities below the node
+           box.palette="RdBu", # color palette
+           shadow.col="gray", # shadow color under the boxes
+           nn=TRUE) # display the node numbers
+
+# Get the number of nodes
+number_of_nodes <- sum(pruned_tree$frame$var != "<leaf>")
+print(paste("Number of nodes in the pruned tree:", number_of_nodes))
+
+# Get the complexity parameter table from the original tree
+cp_table <- pruned_tree$cptable
+
+# Plot the cross-validated error (deviance) against the size of the tree
+plot(cp_table[,"CP"], cp_table[,"xerror"], type="b", xlab="Complexity Parameter (Pruning Decreases)", ylab="Deviance (Cross-Validated Error)", main="Deviance of Pruned Classification Tree")
+
+
+
+# Installing and loading necessary libraries
+if (!requireNamespace("ipred", quietly = TRUE)) install.packages("ipred")
+if (!requireNamespace("caret", quietly = TRUE)) install.packages("caret")
+
+library(ipred)
+library(caret)
+
+# Splitting data into training and validation sets
+trainIndex <- createDataPartition(train_data$Divorce, p=0.8, list=FALSE)
+train_data_sub <- train_data[trainIndex,]
+validation_data <- train_data[-trainIndex,]
+
+# Defining range and increment
+start_trees <- 5
+end_trees <- 500
+increment <- 5
+
+accuracies <- numeric()
+
+# Iterating through the range, fitting bagging models
+for (i in seq(from=start_trees, to=end_trees, by=increment)) {
+  bagging_model <- bagging(Divorce ~ ., data=train_data_sub, nbagg=i, coob=FALSE)
+  pred_bagging <- predict(bagging_model, validation_data)
+  accuracy <- sum(pred_bagging == validation_data$Divorce) / length(pred_bagging)
+  accuracies <- c(accuracies, accuracy)
+}
+
+# Finding the optimum number of trees
+optimal_trees <- start_trees + which.max(accuracies) * increment - increment
+print(paste("Optimal number of trees:", optimal_trees))
+
+# Plotting the accuracies
+plot(seq(from=start_trees, to=end_trees, by=increment), accuracies, type='b', xlab='Number of Trees', ylab='Accuracy', main='Accuracy vs Number of Trees')
+abline(v=optimal_trees, col="green")
+
+
+# Iterating through the range, fitting bagging models
+for (i in seq(from=start_trees, to=end_trees, by=increment)) {
+  bagging_model <- bagging(Divorce ~ ., data=train_data_sub, nbagg=i, coob=FALSE)
+  pred_bagging <- predict(bagging_model, validation_data)
+  accuracy <- sum(pred_bagging == validation_data$Divorce) / length(pred_bagging)
+  accuracies <- c(accuracies, accuracy)
+}
+
+
+# Finding the optimum number of trees
+optimal_trees <- start_trees + which.max(accuracies) * increment - increment
+print(paste("Optimal number of trees:", optimal_trees))
+
+# Plotting the accuracies
+plot(seq(from=start_trees, to=end_trees, by=increment), accuracies, type='b', xlab='Number of Trees', ylab='Accuracy', main='Accuracy vs Number of Trees')
+abline(v=optimal_trees, col="green")
+
+# Initialize a vector to store mean decrease in accuracy for each variable
+mean_decrease_accuracy <- numeric(length(variable_names))
+
+# Store the column names of predictor variables
+variable_names <- setdiff(names(train_data_sub), c("Divorce", "Year spell end (2020= not ended)"))
+# Fit a bagged model using all variables (your baseline model)
+baseline_bagging_model <- bagging(Divorce ~ ., data=train_data_sub, nbagg=optimal_trees, coob=FALSE)
+baseline_pred <- predict(baseline_bagging_model, validation_data)
+baseline_accuracy <- sum(baseline_pred == validation_data$Divorce) / length(baseline_pred)
+print(baseline_accuracy)
+# Initialize the formula with backticks around the variable name
+formula <- as.formula(paste("Divorce ~ . - `", variable_names[i], "`", sep=""))
+
+# Loop through each variable
+for (i in seq_along(variable_names)) {
+  # Drop one variable at a time with backticks around the variable name
+  formula <- as.formula(paste("Divorce ~ . - `", variable_names[i], "`", sep=""))
+  
+  # Fit the bagged model without the ith variable
+  dropped_var_model <- bagging(formula, data=train_data_sub, nbagg=optimal_trees, coob=FALSE)
+  
+  # Make predictions on the validation set
+  dropped_var_pred <- predict(dropped_var_model, validation_data)
+  
+  # Calculate accuracy
+  dropped_var_accuracy <- sum(dropped_var_pred == validation_data$Divorce) / length(dropped_var_pred)
+  
+  # Calculate mean decrease in accuracy
+  mean_decrease_accuracy[i] <- baseline_accuracy - dropped_var_accuracy
+}
+
+
+# Create a table of mean decrease in accuracy
+importance_table <- data.frame(Variable = variable_names, Mean_Decrease_Accuracy = mean_decrease_accuracy)
+importance_table <- importance_table[order(-importance_table$Mean_Decrease_Accuracy), ]
+
+# Print the table
+print(importance_table)
+
+optimal_bagging_model <- bagging(Divorce ~ ., data=train_data_sub, nbagg=optimal_trees, coob=FALSE)
+optimal_predictions <- predict(optimal_bagging_model, validation_data)
+
+confusion <- table(pred_bagging, validation_data$Divorce)
+accuracy = sum(diag(confusion)) / sum(confusion)
+print(accuracy)
+print(confusion)
+set.seed(123)
+# Check dimensions of your datasets
+print(dim(train_data_sub))
+print(dim(validation_data))
+
+# Check for overlap
+overlapping_rows <- intersect(train_data_sub, validation_data)
+print(length(overlapping_rows))
+library(ipred)
+bagging_model <- bagging(Divorce ~ ., data=train_data_sub, nbagg=optimal_trees, coob=FALSE)
+pred_bagging <- predict(bagging_model, newdata=validation_data)
+confusion <- table(pred_bagging, validation_data$Divorce)
+accuracy <- sum(diag(confusion)) / sum(confusion)
+print(paste("Accuracy:", accuracy))
+print(sessionInfo())
+print(paste("Optimal number of trees:", optimal_trees))
+
+# Fit optimal bagging model
+bagging_model <- bagging(Divorce ~ ., data=train_data_sub, nbagg=optimal_trees, coob=FALSE)
+pred_bagging <- predict(bagging_model, newdata=validation_data)
+confusion <- table(pred_bagging, validation_data$Divorce)
+accuracy <- sum(diag(confusion)) / sum(confusion)
+print(paste("Accuracy:", accuracy))
+
+print(sessionInfo())
+print(paste("Optimal number of trees:", optimal_trees))
+
+
+library(randomForest)
+
+print(colnames(train_data))
+colnames(train_data) <- make.names(colnames(train_data))
+
+train_data$Divorce <- as.factor(train_data$Divorce)
+# Compare column names
+identical(colnames(train_data), colnames(test_data))
+print(colnames(train_data))
+print(colnames(test_data))
+colnames(test_data) <- gsub(" ", ".", colnames(test_data))
+
+# Replace the column name in test_data to match train_data
+colnames(test_data)[colnames(test_data) == "Age.end.(if)"] <- "Age.end..if."
+
+# Verify if the column names are now identical
+identical(colnames(train_data), colnames(test_data))
+
+
+random_forest_model <- randomForest(Divorce ~ ., data = train_data)
+
+random_forest_model <- randomForest(Divorce ~ ., data = train_data)
+random_forest_model <- randomForest(Divorce ~ ., data = train_data, classification = TRUE)
+
+pred_rf <- predict(random_forest_model, test_data)
+accuracy_rf <- sum(pred_rf == test_data$Divorce) / length(pred_rf)
+print(accuracy_rf)
+# Print the random forest model to view summary statistics.
+print(random_forest_model)
+
+# For a more detailed summary.
+summary(random_forest_model)
+
+
+# Plot variable importance.
+importance(random_forest_model)
+varImpPlot(random_forest_model)
+# Ensure column names are identical between training and testing sets.
+colnames(test_data) <- colnames(train_data)
+
+# Predictions
+pred_rf <- predict(random_forest_model, test_data[-which(names(test_data) == "Divorce")])
+
+# Accuracy
+accuracy_rf <- sum(pred_rf == test_data$Divorce) / length(pred_rf)
+print(paste("Accuracy: ", round(accuracy_rf, 4)))
+# Generate a confusion matrix to evaluate performance further.
+table(pred_rf, test_data$Divorce)
+
+num_trees <- seq(1, 500, by = 5) 
+accuracies <- numeric(length(num_trees))
+plot_data <- data.frame(NumTrees = num_trees, Accuracy = accuracy_rf)
+for (i in 1:length(num_trees)) {
+  rf_model <- randomForest(Divorce ~ ., data = train_data, ntree = num_trees[i])
+  pred_rf <- predict(rf_model, test_data[-which(names(test_data) == "Divorce")])
+  accuracies[i] <- sum(pred_rf == test_data$Divorce) / length(pred_rf)
+}
+
+ggplot(plot_data, aes(x = NumTrees, y = accuracy_rf)) +
+  geom_line() +
+  geom_point() +
+  ggtitle("Accuracy vs Number of Trees in Random Forest") +
+  xlab("Number of Trees") +
+  ylab("Accuracy")
+ggplot(plot_data, aes(x = NumTrees, y = accuracy_rf)) +
+  geom_jitter(width = 2, height = 0.0001) +
+  ggtitle("Accuracy vs Number of Trees in Random Forest") +
+  xlab("Number of Trees") +
+  ylab("Accuracy")
+# Find the number of trees with the highest accuracy
+optimal_num_trees <- plot_data$NumTrees[which.max(plot_data$accuracy_rf)]
+
+# Add this to your ggplot
+ggplot(plot_data, aes(x = NumTrees, y = accuracy_rf)) +
+  geom_jitter(width = 2, height = 0.0001) +
+  geom_vline(xintercept = optimal_num_trees, color = "red", linetype = "dashed") +
+  ggtitle("Accuracy vs Number of Trees in Random Forest") +
+  xlab("Number of Trees") +
+  ylab("Accuracy") +
+  annotate("text", x = optimal_num_trees, y = min(plot_data$accuracy_rf), label = paste("Optimal: ", optimal_num_trees), color="red")
+
+print(head(plot_data))
+print(optimal_num_trees)
+
+
+print(accuracies)
+
+#Overfitting
+# Perform 10-fold cross-validation
+library(randomForest)
+# Convert 'Divorce' to a factor in both training and test sets
+train_data$Divorce <- as.factor(train_data$Divorce)
+test_data$Divorce <- as.factor(test_data$Divorce)
+
+# Now Random Forest with k-Fold Cross-Validation
+rf_cv_result <- randomForest(Divorce ~ ., data = train_data, ntree=100, nodesize=5, xtest=test_data[, -which(names(test_data) == "Divorce")], ytest=test_data$Divorce)
+
+# Print out-of-bag (OOB) error rate
+print(paste("OOB error rate: ", round(rf_cv_result$err.rate[100, "OOB"], 4)))
+
+# Print test set error rate from cross-validation
+print(paste("Test set error rate: ", round(rf_cv_result$test$err.rate[100, "Test"], 4)))
+# Create a more conservative Random Forest model
+random_forest_tuned_model <- randomForest(Divorce ~ ., data = train_data, ntree=50, nodesize=20)
+# Summary
+summary(random_forest_tuned_model)
+
+# Variable Importance
+importance(random_forest_tuned_model)
+varImpPlot(random_forest_tuned_model)
+# Ensure column names are identical between training and testing sets.
+colnames(test_data) <- colnames(train_data)
+
+# Predictions using the tuned model
+pred_rf_tuned <- predict(random_forest_tuned_model, test_data[-which(names(test_data) == "Divorce")])
+
+# Accuracy of the tuned model
+accuracy_rf_tuned <- sum(pred_rf_tuned == test_data$Divorce) / length(pred_rf_tuned)
+print(paste("Tuned Model Accuracy: ", round(accuracy_rf_tuned, 4)))
+
+# Generate a confusion matrix to evaluate the performance further.
+table(pred_rf_tuned, test_data$Divorce)
+
+# Install the pROC package
+install.packages("pROC")
+
+# Load the package
+library(pROC)
+
+# Generate class probabilities
+prob_rf_tuned <- predict(random_forest_tuned_model, newdata = test_data[-which(names(test_data) == "Divorce")], type = "prob")
+
+# Generate the ROC curve
+roc_curve <- roc(test_data$Divorce, as.numeric(prob_rf_tuned[, 2]))
+
+# Plot the ROC curve
+plot(roc_curve, main="AUC-ROC Curve", col="blue", lwd=2)
+
+# Calculate AUC
+auc_score <- auc(roc_curve)
+print(paste("AUC Score: ", round(auc_score, 4)))
+
+library(dplyr)
+
+minority_data <- filter(train_data, Divorce == 1)
+majority_data <- filter(train_data, Divorce == 0)
+
+# Under-sample the majority class
+set.seed(123)
+undersampled_majority <- sample_n(majority_data, size = nrow(minority_data))
+
+# Combine them back into one dataset
+undersampled_data <- bind_rows(undersampled_majority, minority_data)
+# Over-sample minority class
+set.seed(123)
+oversampled_minority <- sample_n(minority_data, size = nrow(majority_data), replace = TRUE)
+
+# Combine them back into one dataset
+oversampled_data <- bind_rows(oversampled_minority, majority_data)
+# Fit the Random Forest model on the balanced dataset
+random_forest_model <- randomForest(Divorce ~ ., data =oversampled_data) # Replace
+
+
+# Making Predictions on Test Data
+pred_rf <- predict(random_forest_model, test_data[-which(names(test_data) == "Divorce")])
+
+# Generating a Confusion Matrix
+conf_matrix <- table(pred_rf, test_data$Divorce)
+
+# Printing Confusion Matrix
+print(conf_matrix)
+
+# Calculating Metrics
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+precision <- conf_matrix[2, 2] / sum(conf_matrix[2, ])
+recall <- conf_matrix[2, 2] / sum(conf_matrix[, 2])
+specificity <- conf_matrix[1, 1] / sum(conf_matrix[, 1])
+f1_score <- 2 * ((precision * recall) / (precision + recall))
+
+# Printing Metrics
+print(paste("Accuracy: ", round(accuracy, 4)))
+print(paste("Precision: ", round(precision, 4)))
+print(paste("Recall: ", round(recall, 4)))
+print(paste("Specificity: ", round(specificity, 4)))
+print(paste("F1 Score: ", round(f1_score, 4)))
+
+
+original_x_train <- train_data[, !(names(train_data) %in% c("Divorce"))]
+original_x_train <- as.data.frame(original_x_train)
+original_x_train <- as.matrix(original_x_train)
+
+dim(original_x_train)
+length(y_train)
+
+y_train <- as.numeric(as.character(y_train))
+print(unique(y_train))
+
+y_train <- y_train + 1
+
+install.packages("xgboost")
+
+library("xgboost")
+
+# Create xgb.DMatrix object
+dtrain <- xgb.DMatrix(data = original_x_train, label = y_train)
+
+# Set up parameters
+params <- list(
+  objective = "binary:logistic",
+  eval_metric = "logloss"
+)
+# Train the XGBoost model
+boosting_model <- xgb.train(
+  params = params,
+  data = dtrain,
+  nrounds = 100
+)
+original_x_test <- as.matrix(test_data[, !(names(test_data) %in% "Divorce")]) # All columns except the Divorce
+y_test <- as.numeric(test_data$Divorce) # Divorce column
+dtest <- xgb.DMatrix(data = original_x_test, label = y_test)
+pred_boosting <- predict(boosting_model, dtest)
+accuracy_boosting <- sum(pred_boosting == y_test) / length(pred_boosting)
+print(paste("Boosting Model Accuracy:", accuracy_boosting))
+summary(pred_boosting)
+threshold <- 0.5
+pred_labels <- ifelse(pred_boosting > threshold, 2, 1)
+accuracy_boosting <- sum(pred_labels == y_test) / length(pred_labels)
+print(paste("Boosting Model Accuracy:", accuracy_boosting))
+
+
+accuracy_full # This comes from your full logistic model
+accuracy_lasso # This comes from your lasso logistic model
+
+comparison_table <- data.frame(
+  Model = c("Standard Tree", "Pruned Tree", "Bagging", "Random Forest", "Boosting", "Full Logistic", "Lasso Logistic"),
+  Accuracy = c(accuracy_standard, accuracy_pruned, accuracy_bagging, accuracy_rf, accuracy_boosting, accuracy_full, accuracy_lasso)
+)
+
+print(comparison_table)
+
+pred_boosting <- predict(boosting_model, dtest)
+
+
+accuracy_boosting <- sum(pred_boosting == test_data$Divorce) / length(pred_boosting)
+
+
+#How many trees?
+library(randomForest)
+random_forest_model <- randomForest(Divorce ~ ., data = train_data)
+print(random_forest_model$ntree) # Will print 500
+
+library(ipred)
+bagging_model <- bagging(Divorce ~ ., data = train_data, coob = TRUE)
+print(bagging_model$nbagg) # No of bagged models
+
+
+
+
+
+
+write.csv(Data, file = "Data.csv", row.names = FALSE)
+write.csv(Data, file = "/Users/cheryn/Downloads/Data.csv", row.names = FALSE)
+
+
+# Load necessary libraries
+library(randomForest)
+library(caret)
+
+# Rename problematic columns 
+names(Data)[names(Data) == "Sometimes too coarse with others"] <- "Sometimes_too_coarse_with_others"
+names(Data)[names(Data) == "Worry a lot"] <- "Worry_a_lot"
+names(Data)[names(Data) == "Able to forgive"] <- "Able_to_forgive"
+names(Data)[names(Data) == "Tend to be lazy"] <- "Tend_to_be_lazy"
+names(Data)[names(Data) == "Value artistic experiences"] <- "Value_artistic_experiences"
+names(Data)[names(Data) == "Somewhat nervous"] <- "Somewhat_nervous"
+names(Data)[names(Data) == "Carry out tasks efficiently"] <- "Carry_out_tasks_efficiently"
+names(Data)[names(Data) == "Friendly with others"] <- "Friendly_with_others"
+names(Data)[names(Data) == "Have lively imagination"] <- "Have_lively_imagination"
+names(Data)[names(Data) == "Deal well with stress"] <- "Deal_well_with_stress"
+names(Data)[names(Data) == "Personal Patience"] <- "Personal_Patience"
+names(Data)[names(Data) == "Personal Impulsiveness"] <- "Personal_Impulsiveness"
+names(Data)[names(Data) == "No of previous relationships"] <- "No_of_previous_relationships"
+names(Data)[names(Data) == "Partnership status"] <- "Partnership_status"
+names(Data)[names(Data) == "Age began"] <- "Age_began"
+names(Data)[names(Data) == "Age end (if)"] <- "Age_end_if"
+names(Data)[names(Data) == "Year Spell began"] <- "Year_Spell_began"
+names(Data)[names(Data) == "Year spell end (2020= not ended)"] <- "Year_spell_end_2020_not_ended"
+names(Data)[names(Data) == "Where did you live 1989"] <- "Where_did_you_live_1989"
+names(Data)[names(Data) == "Sexual orientation"] <- "Sexual_orientation"
+
+# Splitting the data into training (80%) and testing (20%) sets
+set.seed(123)
+trainIndex <- createDataPartition(Data$Divorce, p = .8, list = FALSE, times = 1)
+Data_train <- Data[ trainIndex,]
+Data_test  <- Data[-trainIndex,]
+
+# Applying k-fold cross-validation (with k = 10)
+fitControl <- trainControl(method = "cv", number = 10)
+
+set.seed(123)
+rf_cv_model <- train(Divorce ~ ., 
+                     data = Data_train, 
+                     method = "rf", 
+                     trControl = fitControl, 
+                     ntree = 500)
+
+# Checking results
+print(rf_cv_model)
+
+# Make sure Divorce is a factor
+Data_train$Divorce <- as.factor(Data_train$Divorce)
+
+# Fit model
+rf_cv_model <- train(Divorce ~ ., 
+                     data = Data_train, 
+                     method = "rf", 
+                     trControl = fitControl, 
+                     ntree = 500)
+#mtry best is 17 with 0.9995890 accuracy- we should check for overfitting
+
+#Testing for overfitting
+# Predict on the training set
+train_pred <- predict(rf_cv_model, Data_train)
+
+# Calculate accuracy for the training set
+train_acc <- sum(train_pred == Data_train$Divorce) / nrow(Data_train)
+print(paste('Training accuracy: ', train_acc))
+
+# Predict on the test set
+test_pred <- predict(rf_cv_model, Data_test)
+
+# Calculate accuracy for the test set
+test_acc <- sum(test_pred == Data_test$Divorce) / nrow(Data_test)
+print(paste('Test accuracy: ', test_acc))
+
+#Going to compare RF to simpler logistic regression model to see if Rf overfitted 
+
+# Build the logistic regression model
+logistic_model <- glm(Divorce ~ Thorough_worker + Communicative + Sometimes_too_coarse_with_others + Original + Worry_a_lot + Able_to_forgive + Tend_to_be_lazy + Sociable + Value_artistic_experiences + Somewhat_nervous + Carry_out_tasks_efficiently + Reserved + Friendly_with_others + Have_lively_imagination + Deal_well_with_stress + Personal_Patience + Personal_Impulsiveness + Inquisitive + No_of_previous_relationships + Partnership_status + Age_began + Age_end_if + Year_Spell_began + Death + Occupational_Position + Education_Classification + sex + Year_of_birth + Where_did_you_live_1989 + Sexual_orientation,
+                      data = Data_train, family = "binomial")
+
+# Predict on the training set
+logistic_train_pred <- predict(logistic_model, Data_train, type = "response")
+
+# Binarize the predictions based on a 0.5 threshold
+logistic_train_pred <- ifelse(logistic_train_pred > 0.5, 1, 0)
+
+# Calculate accuracy for the training set
+logistic_train_acc <- sum(logistic_train_pred == Data_train$Divorce) / nrow(Data_train)
+print(paste('Logistic Regression Training accuracy: ', logistic_train_acc))
+
+# Predict on the test set
+logistic_test_pred <- predict(logistic_model, Data_test, type = "response")
+
+# Binarize the predictions based on a 0.5 threshold
+logistic_test_pred <- ifelse(logistic_test_pred > 0.5, 1, 0)
+
+# Calculate accuracy for the test set
+logistic_test_acc <- sum(logistic_test_pred == Data_test$Divorce) / nrow(Data_test)
+print(paste('Logistic Regression Test accuracy: ', logistic_test_acc))
+
+
+#Show co-efficients of Logistic Model
+# Extract coefficients
+coefficients <- summary(logistic_model)$coefficients
+print(coefficients)
+
+# Create a dataframe of coefficients
+df_coefficients <- data.frame(
+  Feature = rownames(coefficients),
+  Coefficient = coefficients[, "Estimate"]
+)
+
+# Plot coefficients
+ggplot(df_coefficients, aes(x = reorder(Feature, Coefficient), y = Coefficient)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Logistic Regression Coefficients",
+       x = "Features",
+       y = "Coefficient value")
+# Exclude certain columns from the dataframe
+Data_train_reduced <- Data_train[, !(names(Data_train) %in% c('Partnership_status', 'Age_began', 'Age_end_if', 'Year_spell_began', 'year_spell_end_2020_not_ended', 'pid', 'cid'))]
+Data_test_reduced <- Data_test[, !(names(Data_test) %in% c('Partnership_status', 'Age_began', 'Age_end_if', 'Year_spell_began', 'year_spell_end_2020_not_ended', 'pid', 'cid'))]
+
+# Create the model
+logistic_model_reduced <- glm(Divorce ~ ., family = binomial(link = "logit"), data = Data_train_reduced)
+
+# Make predictions
+logistic_test_pred_reduced <- ifelse(predict(logistic_model_reduced, newdata = Data_test_reduced, type = "response") > 0.5, 1, 0)
+
+# Check accuracy
+logistic_test_acc_reduced <- sum(logistic_test_pred_reduced == Data_test_reduced$Divorce) / nrow(Data_test_reduced)
+print(paste('Logistic Regression Test accuracy (reduced): ', logistic_test_acc_reduced))
+
+# Extract coefficients
+coefficients_reduced <- summary(logistic_model_reduced)$coefficients
+
+# Create a dataframe of coefficients
+df_coefficients_reduced <- data.frame(
+  Feature = rownames(coefficients_reduced),
+  Coefficient = coefficients_reduced[, "Estimate"]
+)
+
+# Plot coefficients
+ggplot(df_coefficients_reduced, aes(x = reorder(Feature, Coefficient), y = Coefficient)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Logistic Regression Coefficients (Reduced)",
+       x = "Features",
+       y = "Coefficient value")
+
+# Print coefficients
+print(coefficients_reduced)
+
+# Split the dataset
+library(caTools)
+set.seed(4)
+split <- sample.split(Data$Divorce, SplitRatio = 0.75)
+train_data <- subset(Data, split == TRUE)
+test_data <- subset(Data, split == FALSE)
+
+# Logistic Regression
+log_reg <- glm(Divorce ~ ., data = train_data, family = binomial)
+summary(log_reg)
+
+
+#Logistic regressiin with LASSO
+# Installing and loading the glmnet package
+if (!requireNamespace("glmnet", quietly = TRUE)) install.packages("glmnet")
+library(glmnet)
+
+# Preparing the features and response
+x_train <- as.matrix(train_data[,-which(names(train_data) %in% "Divorce")])
+y_train <- train_data$Divorce
+x_test <- as.matrix(test_data[,-which(names(test_data) %in% "Divorce")])
+y_test <- test_data$Divorce
+
+#in a table
+# Extracting coefficients
+coefficients <- summary(log_reg)$coefficients
+
+# Creating a table with the results
+results_table <- data.frame(
+  Variable = rownames(coefficients),
+  Beta_Coefficient = coefficients[, "Estimate"],
+  Standard_Error = coefficients[, "Std. Error"]
+)
+
+# Print the results table
+print(results_table)
+
+##################################### Boosting ###############################
+print(train_data_matrix)
+print(test_data_matrix)
+print(getinfo(train_data_matrix, "label"))
+print(getinfo(test_data_matrix, "label"))
+
+
+
+
+install.packages("xgboost")
+train_data_matrix <- xgb.DMatrix(data = as.matrix(train_data[, -which(names(train_data) == "Divorce")]), label = train_data$Divorce)
+test_data_matrix <- xgb.DMatrix(data = as.matrix(test_data[, -which(names(test_data) == "Divorce")]), label = test_data$Divorce)
+
+params <- list(
+  booster = "gbtree",
+  objective = "binary:logistic",
+  eta = 0.3,
+  gamma = 0,
+  max_depth = 6,
+  min_child_weight = 1,
+  subsample = 1,
+  colsample_bytree = 1
+)
+xgb_model <- xgb.train(
+  params = params,
+  data = train_data_matrix,
+  nrounds = 100,
+  early_stopping_rounds = 10,
+  watchlist = list(val = test_data_matrix),
+  verbose = 1
+)
+pred_xgb <- predict(xgb_model, newdata = test_data_matrix)
+pred_xgb <- ifelse(pred_xgb > 0.5, 1, 0)
+accuracy_xgb <- sum(pred_xgb == test_data$Divorce) / length(test_data$Divorce)
+print(paste("XGBoost Accuracy: ", round(accuracy_xgb, 4)))
+
+install.packages("xgboost")
+install.packages("ggplot2")
+library(xgboost)
+library(ggplot2)
+
+# Initialize an empty data frame to store results
+results_df <- data.frame()
+
+
+# Initialize parameters (excluding 'max_depth')
+params <- list(
+  booster = "gbtree",
+  objective = "binary:logistic",
+  eta = 0.3,
+  min_child_weight = 1
+)
+
+# Loop through various tree depths
+for (depth in seq(1, 10)) {
+  
+  # Update 'max_depth' in parameters
+  params$max_depth <- depth
+  
+  # Train the model
+  xgb_model <- xgb.train(
+    params = params,
+    data = train_data_matrix,
+    nrounds = 100,
+    early_stopping_rounds = 10,
+    watchlist = list(val = test_data_matrix),
+    verbose = 0  # Suppress verbose for this loop
+  )
+  
+  # Make predictions
+  pred_xgb <- predict(xgb_model, newdata = test_data_matrix)
+  pred_xgb <- ifelse(pred_xgb > 0.5, 1, 0)
+  
+  # Calculate accuracy
+  accuracy_xgb <- sum(pred_xgb == test_data$Divorce) / length(test_data$Divorce)
+  
+  # Append results to data frame
+  results_df <- rbind(results_df, data.frame(Depth = depth, Accuracy = accuracy_xgb))
+}
+
+# Plot accuracy vs tree depth using ggplot2
+ggplot(results_df, aes(x = Depth, y = Accuracy)) +
+  geom_line() +
+  geom_point() +
+  xlab("Max Depth of Trees") +
+  ylab("Test Accuracy") +
+  ggtitle("Accuracy vs Tree Depth for XGBoost Model") +
+  theme_minimal()
+
+#Make the plot nicer-possibly
+# Install and load necessary packages
+install.packages(c("xgboost", "ggplot2", "scales"))
+library(xgboost)
+library(ggplot2)
+library(scales)
+
+# Initialize an empty data frame to store results
+results_df <- data.frame()
+
+# Initialize parameters (excluding 'max_depth')
+params <- list(
+  booster = "gbtree",
+  objective = "binary:logistic",
+  eta = 0.3,
+  min_child_weight = 1
+)
+
+# Loop through various tree depths
+for (depth in seq(1, 10)) {
+  params$max_depth <- depth
+  
+  xgb_model <- xgb.train(
+    params = params,
+    data = train_data_matrix,
+    nrounds = 100,
+    early_stopping_rounds = 10,
+    watchlist = list(val = test_data_matrix),
+    verbose = 0  # Suppress verbose for this loop
+  )
+  
+  pred_xgb <- predict(xgb_model, newdata = test_data_matrix)
+  pred_xgb <- ifelse(pred_xgb > 0.5, 1, 0)
+  
+  accuracy_xgb <- sum(pred_xgb == test_data$Divorce) / length(test_data$Divorce)
+  
+  results_df <- rbind(results_df, data.frame(Depth = depth, Accuracy = accuracy_xgb))
+}
+
+
+
+# Identify the row with the maximum accuracy
+max_accuracy_row <- which.max(results_df$Accuracy)
+
+# Updated ggplot2 code
+ggplot(results_df, aes(x = Depth, y = Accuracy)) +
+  geom_line(size = 1, aes(color = "Accuracy"), alpha = 0.8) +
+  geom_point(size = 4, shape = 21, fill = "white") +
+  geom_point(data = results_df[max_accuracy_row, ], aes(x = Depth, y = Accuracy),
+             color = "pink", size = 6, shape = 8) +
+  scale_color_manual(values = c("Accuracy" = "light blue")) +
+  scale_x_continuous(breaks = seq(min(results_df$Depth), max(results_df$Depth), by = 1)) +
+  scale_y_continuous(labels = percent_format(scale = 100)) +
+  labs(
+    title = "Accuracy vs Tree Depth for XGBoost Model",
+    x = "Max Depth of Trees",
+    y = "Test Accuracy",
+    color = "Legend"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 15),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 12)
+  )
+
+
+
+######Logistic #################
+#Full logistic model
+full_logistic_model <- glm(Divorce ~ ., data = Data, family = binomial)
+summary(full_logistic_model)
+
+df$Year_spell_end_2020_not_ended <- NULL
+# Predict probabilities
+predicted_probabilities <- predict(full_logistic_model, type = "response")
+
+# Convert probabilities to binary class labels based on a threshold (e.g., 0.5)
+predicted_classes <- ifelse(predicted_probabilities > 0.1, 1, 0)
+
+# Create a confusion matrix using actual y values and the predicted classes
+confusion_matrix <- table(Data$Divorce, predicted_classes)
+confusion_matrix
+
+install.packages("caret")
+library(caret)1
+
+# Confusion
+confusionMatrix(as.factor(predicted_classes), as.factor(Data$Divorce))
+
+
+install.packages("pROC")
+library(pROC)
+
+roc_obj <- roc(Data$Divorce, predicted_probabilities) # Make sure predicted_probabilities are the probabilities of the positive class
+auc(roc_obj) # To get the AUC
+plot(roc_obj, main="ROC Curve", col="blue", lwd=2)
+# Plotting the ROC curve
+plot(roc_obj, main="ROC Curve", col="blue", lwd=2, xlab="False Positive Rate", ylab="True Positive Rate")
+
+# Adding a reference line for a random classifier
+abline(0, 1, lty=2, col="gray")
+
+# Adding AUC value to the plot
+text(0.7, 0.2, paste("AUC:", round(auc(roc_obj), 4)))
+
+# Adding grid lines for better visual interpretation
+grid(col="lightgray")
+
+legend("bottomright", legend=paste("AUC:", round(auc(roc_obj), 4)), bg="white")
+
+
+
+
+
+#Subset model
+library(MASS)
+stepwise_model <- stepAIC(full_logistic_model, direction = "forward")
+summary(stepwise_model)
+
+aic_full = AIC(full_logistic_model)
+print(aic_full)
+aic_reduced = AIC(logistic_model_reduced)
+print(aic_reduced)
+bic_full = BIC(full_logistic_model)
+bic_reduced = BIC(logistic_model_reduced)
+print(bic_full)
+print(bic_reduced)
+
+# Converting the Year_of_birth column to numeric
+Data$Year_of_birth <- as.numeric(as.character(Data$Year_of_birth))
+# Assuming your data is stored in a dataframe named my_data
+Dataa$Year_of_birth <- as.numeric(as.character(my_data$Year_of_birth))
+
+
+#LASSO
+# Load necessary library
+library(glmnet)
+
+# Prepare data
+X <- as.matrix(Data[, -which(names(Data) == "Divorce")]) # Exclude response variable
+y <- Data$Divorce
+
+# Create a LASSO model
+lasso_model <- glmnet(X, y, alpha = 1) # alpha = 1 for LASSO
+
+# Use CV for optimal lambda
+cv.lasso <- cv.glmnet(X, y, alpha = 1)
+best_lambda <- cv.lasso$lambda.min
+
+# Refit the model using the best lambda
+lasso_model <- glmnet(X, y, alpha = 1, lambda = best_lambda)
+
+# To see the coefficients
+coefs <- coef(lasso_model)
+print(coefs)
+
+plot(lasso_model, xvar="lambda", label=TRUE)
+# Fit the LASSO model using cross-validation
+cv.lasso <- cv.glmnet(X, y, alpha = 1)
+
+# Extract the coefficients at the best lambda
+best_lambda <- cv.lasso$lambda.min
+coefs <- coef(cv.lasso, s = best_lambda)
+
+# Fit the LASSO model using cross-validation
+cv.lasso <- cv.glmnet(X, y, alpha = 1)
+
+# Extract the coefficients at the best lambda
+best_lambda <- cv.lasso$lambda.min
+coefs <- coef(cv.lasso, s = best_lambda)
+
+# Create a table of the coefficients
+result_table <- data.frame(
+  Variable = rownames(coefs),
+  `Beta Coefficient` = as.numeric(coefs)
+)
+
+# Print the table
+print(result_table)
+
+
+# Predicted values
+predicted_full <- predict(full_logistic_model, newdata = test_data, type = "response")
+
+# Threshold at 0.5
+predicted_full <- ifelse(predicted_full > 0.5, 1, 0)
+
+# Confusion matrix
+table_full <- table(Predicted = as.factor(predicted_full), Actual = as.factor(test_data$Divorce))
+print(table_full)
+# Metrics
+accuracy_full <- sum(diag(table_full)) / sum(table_full)
+recall_full <- table_full[2,2] / sum(table_full[2,])
+precision_full <- table_full[2,2] / sum(table_full[,2])
+
+print(accuracy_full)
+print(recall_full)
+print(precision_full)
+# Removing the identified extra column from x_test
+x_test <- x_test[, -which(names(x_test) == "Year_spell_end_2020_not_ended")]
+# Convert the x_test data frame to a matrix
+x_test_matrix <- as.matrix(x_test)
+
+# Rerun the prediction using the matrix
+predicted_lasso_prob <- predict(lasso_model, newx = x_test_matrix, s = best_lambda)
+
+
+# Rerun the prediction
+predicted_lasso_prob <- predict(lasso_model, newx = x_test, s = best_lambda)
+
+predicted_lasso <- ifelse(predicted_lasso_prob > 0.5, 1, 0)
+
+# Confusion matrix
+table_lasso <- table(Predicted = as.factor(predicted_lasso), Actual = as.factor(Data$Divorce))
+print(table_lasso)
+# Metrics
+accuracy_lasso <- sum(diag(table_lasso)) / sum(table_lasso)
+recall_lasso <- table_lasso[2,2] / sum(table_lasso[2,])
+precision_lasso <- table_lasso[2,2] / sum(table_lasso[,2])
+
+print(accuracy_lasso)
+print(recall_lasso)
+print(precision_lasso)
+
+install.packages("pROC")
+library(pROC)
+predicted_lasso_prob <- predict(lasso_model, newx = x_test[-extra_columns], s = best_lambda, type = "response")
+roc_lasso <- roc(test_data$Divorce, predicted_lasso_prob)
+
+table_lasso <- table(Predicted = as.factor(predicted_lasso), Actual = as.factor(test_data$Divorce))
+print(table_lasso)
+auc_lasso <- auc(roc_lasso)
+print(auc_lasso)
+plot(roc_lasso, main="ROC Curve for LASSO Model", col="blue", lwd=2)
+library(pROC)
+
+#library(pROC)
+
+# Plot the ROC curve
+plot(roc_lasso, 
+     main = "ROC Curve for LASSO Model", 
+     col = "#1c61b6", 
+     lwd = 2, 
+     lty = 1)
+
+# Add a 45-degree line representing random guessing
+abline(h = seq(0, 1, 0.1), v = seq(0, 1, 0.1), col = "grey", lty = 3)
+abline(a = 0, b = 1, col = "red", lwd = 2, lty = 2)
+
+# Add a legend
+legend("bottomright", 
+       legend = c("LASSO", "Random Guessing"), 
+       col = c("#1c61b6", "red"), 
+       lty = c(1, 2), 
+       lwd = c(2, 2))
+
+# Compute AUC
+auc_lasso <- auc(roc_lasso)
+
+# Add AUC to the plot
+text(0.3, 0.7, paste("AUC:", round(auc_lasso, 4)), cex = 1.2)
+
+
