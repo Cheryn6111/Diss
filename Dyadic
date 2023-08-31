@@ -1,0 +1,172 @@
+library(ggplot2)
+library(dplyr)
+library(caret)
+library(tidyr)
+library(FactoMineR)
+install.packages("readr")
+library(readr)
+
+
+# Load the data
+Dyadic <- read_csv("/Users/cheryn/Downloads/DyadicData.csv")
+
+# Summary statistics
+summary(data)
+
+# Print summary statistics of the Dyadic dataframe
+dyadic_summary <- summary(Dyadic)
+print("******* Dyadic Data Summary *******")
+print(dyadic_summary)
+
+# Print Dyadic Data Summary
+print("******* Dyadic Data Summary *******")
+dyadic_summary <- summary(Dyadic)
+print(dyadic_summary)
+
+
+# Discuss the Variables in Dyadic Data Frame
+cat("
+Discussion of Dyadic Variables:
+
+1. pid1 & pid2: These are the unique identifiers for each partner in the dyad.
+2. parid1 & parid2: Parental IDs could be indicative of family ties or lineage.
+3. Thorough.worker to Deal.well.with.stress: These are personality traits or behavioral variables for partners.
+4. No.of.spells & Spell.type: Relate to the number and types of relationship periods.
+5. Begin & End: Indicate the years in which the relationship began and ended, potentially useful for calculating relationship duration.
+6. Divorce: Our target variable, indicating whether a divorce occurred.
+7. Occupational.Position.Partner.1 & 2: These could relate to socio-economic status.
+8. Education.Classification: Indicates the education level, which could be a critical factor in relationship stability.
+9. Survey.Year & Year.of.last.survey: Meta-data that could be useful for temporal analysis.
+10. Sex.Partner.1 & 2: Indicates the sex of each partner.
+
+The dyadic data frame captures relational dynamics by including information from both partners, unlike an individual data frame that would typically contain information from one partner.
+")
+
+
+print(colnames(Dyadic))
+
+
+install.packages("dplyr")
+library(dplyr)
+
+selected_vars <- c("Thorough.worker", "Communicative", "Sometimes.too.coarse.with.others", 
+                   "Original", "Worry.a.lot", "Able.to.forgive", "Tend.to.be.lazy", "Sociable", 
+                   "Value.artistic.experiences", "Somewhat.nervous", "Carry.out.tasks.efficiently",
+                   "Reserved", "Friendly.with.others", "Have.lively.imagination", "Deal.well.with.stress", 
+                   "Personal.Patience", "Personal.Impulsiveness", "Inquisitive")
+
+summary_table <- Dyadic %>%
+  select(selected_vars) %>%
+  summarise(across(everything(), list(mean = mean, sd = sd), .names = "{.fn}.{.col}"))
+
+print(summary_table)
+
+selected_vars <- c("Thorough.worker", "Communicative", "Sometimes.too.coarse.with.others", 
+                   "Original", "Worry.a.lot", "Able.to.forgive", "Tend.to.be.lazy", "Sociable", 
+                   "Value.artistic.experiences", "Somewhat.nervous", "Carry.out.tasks.efficiently",
+                   "Reserved", "Friendly.with.others", "Have.lively.imagination", "Deal.well.with.stress", 
+                   "Personal.Patience", "Personal.Impulsiveness", "Inquisitive")
+
+summary_table <- data.frame(
+  Mean = sapply(Dyadic[, selected_vars], mean),
+  SD = sapply(Dyadic[, selected_vars], sd)
+)
+
+print(summary_table)
+
+summary_table_base <- data.frame(
+  Mean = sapply(Dyadic, mean, na.rm = TRUE),  # Setting na.rm=TRUE to remove NA values
+  SD = sapply(Dyadic, sd, na.rm = TRUE)
+)
+
+print(summary_table_base)
+
+
+cor_matrix <- cor(Dyadic[, c("Thorough worker", "Communicative")], use="pairwise.complete.obs")
+print(cor_matrix)
+# Handling missing values - imputing with median
+Dyadic[is.na(Dyadic)] <- sapply(Dyadic, median, na.rm=TRUE)
+
+install.packages("mice")
+library(mice)
+colnames(Dyadic) <- make.names(colnames(Dyadic))
+
+
+method <- make.method(Dyadic)
+method[sapply(Dyadic, is.numeric)] <- "mean"
+imputed_data <- mice(Dyadic, method=method, m=1) # m=1 specifies one single imputed dataset
+
+
+
+# Perform the imputation
+imputed_data <- mice(Dyadic, method=method, m=1) # m=1 specifies one single imputed dataset
+completed_data <- complete(imputed_data)
+
+# Extract the completed data
+completed_data <- complete(imputed_data)
+
+
+# Categorical encoding
+data$SexPartner1 <- as.factor(data$SexPartner1)
+data$SexPartner2 <- as.factor(data$SexPartner2)
+
+# Feature scaling
+preproc <- preProcess(data[, -c(27, 28)], method = c("center", "scale"))
+data_scaled <- predict(preproc, data[, -c(27, 28)])
+
+
+
+
+# Prepare the features and response
+feature_cols <- names(Dyadic)
+feature_cols <- feature_cols[feature_cols != "Year end"] # Exclude "Year end" column if it exists
+feature_cols <- feature_cols[feature_cols != "Divorce"] # Exclude the response column
+
+x <- Dyadic[, feature_cols]
+y <- Dyadic$Divorce
+
+# Split the dataset
+library(caTools)
+set.seed(4)
+split <- sample.split(y, SplitRatio = 0.75)
+x_train <- subset(x, split == TRUE)
+x_test <- subset(x, split == FALSE)
+y_train <- subset(y, split == TRUE)
+y_test <- subset(y, split == FALSE)
+
+# Logistic Regression
+# Select training data
+train_data <- subset(data, split == TRUE)
+
+# Logistic Regression
+log_reg <- glm(Divorce ~ ., data = train_data[, c(feature_cols, "Divorce")], family = binomial)
+y_pred <- predict(log_reg, newdata = x_test, type = 'response')
+print("******* Logistic Regression *******")
+print("Accuracy Score:")
+print(mean(ifelse(y_pred > 0.5, 1, 0) == y_test))
+
+log_reg <- glm(Divorce ~ ., data = data[feature_cols], family = binomial)
+y_pred <- predict(log_reg, newdata = x_test, type = 'response')
+print("******* Logistic Regression *******")
+print("Accuracy Score:")
+print(mean(ifelse(y_pred > 0.5, 1, 0) == y_test))
+
+# KNN Classifier (K = 5)
+library(class)
+knn_pred <- knn(x_train, x_test, y_train, k=5)
+print("******* KNN Classifier K=5 *******")
+print("Accuracy Score:")
+print(mean(knn_pred == y_test))
+
+# Linear Regression
+linreg <- lm(Divorce ~ ., data = data[feature_cols])
+y_pred <- predict(linreg, newdata = x_test)
+print("******* Linear Regression *******")
+print("Intercept:")
+print(linreg$coefficients[1])
+print("Coefficients:")
+print(linreg$coefficients[-1])
+print("Score:")
+print(summary(linreg)$r.squared)
+
+# Bayesian Network: Complex conversion that might need specialized packages like `bnlearn`
